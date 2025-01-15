@@ -38,6 +38,7 @@ def loginViewPage(request):
     return render(request, 'base/login_register.html', context)
 
 
+
 def registerPage(request):
     form = UserCreationForm()
 
@@ -56,10 +57,12 @@ def registerPage(request):
     return render(request, 'base/login_register.html', context)
 
 
+
 # Logout view
 def logoutUser(request):
     logout(request)
     return redirect('base:home')
+
 
 
 # Main view
@@ -77,9 +80,16 @@ def home(request):
     # Lista de topics y contador de salas
     topics = Topic.objects.all()
     room_count = rooms.count()
+    room_messages = Message.objects.filter(Q(room__topic__name__icontains=q))
 
-    context = {'rooms':rooms, 'topics':topics, 'room_count':room_count}
+    context = {
+        'rooms':rooms, 
+        'topics':topics, 
+        'room_count':room_count, 
+        'room_messages':room_messages,
+    }
     return render(request, 'base/home.html', context)
+
 
 
 # Devuelve una room en particular con id
@@ -87,7 +97,7 @@ def room(request, pk):
 
     # Busca la room con id y renderiza room page
     room = Room.objects.get(id=pk)
-    room_messages = room.message_set.all().order_by('-created')
+    room_messages = room.message_set.all()
     participants = room.participants.all()
 
     if request.method == 'POST':
@@ -101,6 +111,24 @@ def room(request, pk):
 
     context = {'room': room, 'room_messages':room_messages, 'participants':participants}
     return render(request, 'base/room.html', context)
+
+
+
+# Profile view
+def userProfile(request, pk):
+    user = User.objects.get(id=pk)
+    rooms = user.room_set.all()
+    room_message = user.message_set.all()
+    topics = Topic.objects.all()
+
+    context = {
+        'user':user,
+        'rooms':rooms,
+        'topics':topics,
+        'room_messages':room_message,
+        }
+    return render(request, 'base/profile.html', context)
+
 
 
 # Redirige al user al login si no está logueado e intenta crear room.
@@ -119,6 +147,7 @@ def createRoom(request):
     # Else renderiza el form vacío
     context = {'form':form}
     return render(request, 'base/room_form.html', context)
+
 
 
 # View para actualizar una sala
@@ -145,6 +174,7 @@ def updateRoom(request, pk):
     return render(request, 'base/room_form.html', context)
 
 
+
 # View para borrar sala
 @login_required(login_url='base:login')
 def deleteRoom(request, pk):
@@ -163,13 +193,15 @@ def deleteRoom(request, pk):
         'obj':room
     })
 
+
+
 # View para borrar mensajes
 @login_required(login_url='base:login')
 def deleteMessage(request, pk):
     message = Message.objects.get(id=pk) # Busca sala por id
 
     # Maneja si algun user quiere eliminar un post de otro usuario
-    if request.user != message.owner:
+    if request.user != message.user:
         return HttpResponse('You are not alowed here!!')
     
     # If user quiere borrar sala 
