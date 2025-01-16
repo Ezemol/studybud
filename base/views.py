@@ -141,7 +141,9 @@ def createRoom(request):
 
         # Si el form es válido lo guarda
         if form.is_valid():
-            form.save()
+            room = form.save(commit=False)
+            room.host = request.user
+            room.save()
             return redirect('base:home')
 
     # Else renderiza el form vacío
