@@ -7,7 +7,7 @@ from django.contrib.auth import authenticate, login, logout
 from django.contrib import messages
 from django.contrib.auth.forms import UserCreationForm
 from .models import Room, Topic, Message
-from.forms import RoomForm
+from.forms import RoomForm, UserForm
 
 
 
@@ -135,19 +135,22 @@ def userProfile(request, pk):
 @login_required(login_url='base:login')
 def createRoom(request):
     form = RoomForm() # Form predeterminado de django
+    topics = Topic.objects.all()
 
     if request.method == 'POST':
-        form = RoomForm(request.POST) # Analiza los datos del form enviado y los guarda en form
+        topic_name = request.POST.get('topic')
+        topic, created = Topic.objects.get_or_create(name=topic_name)
 
-        # Si el form es válido lo guarda
-        if form.is_valid():
-            room = form.save(commit=False)
-            room.host = request.user
-            room.save()
-            return redirect('base:home')
+        Room.objects.create(
+            host = request.user,
+            topic = topic,
+            name = request.POST.get('name'),
+            description = request.POST.get('description'),
+        )
+        return redirect('base:home')
 
     # Else renderiza el form vacío
-    context = {'form':form}
+    context = {'form':form, 'topics':topics}
     return render(request, 'base/room_form.html', context)
 
 
@@ -160,19 +163,23 @@ def updateRoom(request, pk):
 
     # Precompleta los datos de la sala con el room ya creado
     form = RoomForm(instance=room)
+    topics = Topic.objects.all()
 
     # Maneja si algun user quiere editar un post de otro usuario
     if request.user != room.host:
         return HttpResponse('You are not alowed here!!')
 
     if request.method == 'POST':
-        form = RoomForm(request.POST, instance=room) # Guarda en variable 'form' el form editado
-        if form.is_valid: # Si es válido lo guarda en la base de datos
-            form.save()
-            return redirect('base:home')
+        topic_name = request.POST.get('topic')
+        topic, created = Topic.objects.get_or_create(name=topic_name)
+        room.name = request.POST.get('name')
+        room.topic = topic
+        room.description = request.POST.get('description')
+        room.save()
+        return redirect('base:home')
 
     # Manda el context actualizado, ya sea con o sin cambios.
-    context = {'form': form}
+    context = {'form': form, 'topics':topics, 'room':room}
     return render(request, 'base/room_form.html', context)
 
 
@@ -212,3 +219,18 @@ def deleteMessage(request, pk):
         return redirect('base:home')
            
     return render(request, 'base/delete.html', {'obj':message})
+
+
+@login_required(login_url='base:login')
+def updateUser(request):
+    user = request.user
+    form = UserForm(instance=user)
+
+    if request.method == 'POST':
+        form = UserForm(request.POST, instance=user)
+        if form.is_valid():
+            form.save()
+            return redirect('base:user-profile', pk=user.id)
+
+    context = {'form':form}
+    return render(request, 'base/update-user.html', context)
