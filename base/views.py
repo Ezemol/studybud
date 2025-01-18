@@ -78,7 +78,7 @@ def home(request):
         )
 
     # Lista de topics y contador de salas
-    topics = Topic.objects.all()
+    topics = Topic.objects.all()[0:5]
     room_count = rooms.count()
     room_messages = Message.objects.filter(Q(room__topic__name__icontains=q))
 
@@ -234,3 +234,20 @@ def updateUser(request):
 
     context = {'form':form}
     return render(request, 'base/update-user.html', context)
+
+
+# Manejo de topics para el mobile menu
+def topicsPage(request):
+    q = request.GET.get('q') if request.GET.get('q') != None else '' # Obtiene q del browser 
+
+    topics = Topic.objects.filter(name__icontains=q)
+
+    context = {'topics':topics}
+    return render(request, 'base/topics.html', context)
+
+
+def activityPage(request):
+    room_messages = Message.objects.all()
+
+    context = {'room_messages':room_messages,}
+    return render(request, 'base/activity.html', context)
