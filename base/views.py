@@ -2,48 +2,48 @@ from django.shortcuts import render, redirect
 from django.http import HttpResponse
 from django.contrib.auth.decorators import login_required
 from django.db.models import Q
-from django.contrib.auth.models import User
 from django.contrib.auth import authenticate, login, logout
 from django.contrib import messages
-from django.contrib.auth.forms import UserCreationForm
-from .models import Room, Topic, Message
-from.forms import RoomForm, UserForm
+from .models import Room, Topic, Message, User
+from.forms import RoomForm, UserForm, MyUserCreationForm
 
 
 
 def loginViewPage(request):
-    page = 'login' # Pasa la info de que está logueado
+    page = 'login'
     if request.user.is_authenticated:
         return redirect('base:home')
 
     if request.method == 'POST':
-        # Obtenemos la info del user
-        username = request.POST.get('username').lower()
-        password = request.POST.get('password')
+        email_or_username = request.POST.get('email', '').strip().lower()  # Maneja nulos y espacios
+        password = request.POST.get('password', '')
 
-        try: 
-            user = User.objects.get(username=username) # Se fija si existe el user
-        except: # user not found
+        user = None
+        try:
+            # Verifica si se ingresó un email o un username
+            if User.objects.filter(email=email_or_username).exists():
+                user_obj = User.objects.get(email=email_or_username)
+                user = authenticate(request, username=user_obj.username, password=password)
+            else:
+                user = authenticate(request, username=email_or_username, password=password)
+        except User.DoesNotExist:
             messages.error(request, "User doesn't exist.")
-
-        user = authenticate(request, username=username, password=password) # Autenticación del user
-
-        if user is not None: # If User existe
+        
+        if user is not None:
             login(request, user)
             return redirect('base:home')
         else:
-            messages.error(request, "Username or password doesn't exist.") 
+            messages.error(request, "Email/Username or password is incorrect.")
 
-    context = {'page':page}
+    context = {'page': page}
     return render(request, 'base/login_register.html', context)
 
 
-
 def registerPage(request):
-    form = UserCreationForm()
+    form = MyUserCreationForm()
 
     if request.method == 'POST':
-        form = UserCreationForm(request.POST)
+        form = MyUserCreationForm(request.POST)
         if form.is_valid():
             user = form.save(commit=False)
             user.username = user.username.lower()
@@ -227,7 +227,7 @@ def updateUser(request):
     form = UserForm(instance=user)
 
     if request.method == 'POST':
-        form = UserForm(request.POST, instance=user)
+        form = UserForm(request.POST, request.FILES, instance=user)
         if form.is_valid():
             form.save()
             return redirect('base:user-profile', pk=user.id)

@@ -1,7 +1,17 @@
 from django.db import models
-from django.contrib.auth.models import AbstractUser, User
+from django.contrib.auth.models import AbstractUser
 from django.db.models import CASCADE
 
+
+class User(AbstractUser):
+    name = models.CharField(max_length=200, null=True)
+    email = models.EmailField(unique=True ,null=True)
+    bio = models.TextField(null=True)
+
+    avatar = models.ImageField(null=True, default="avatar.svg")
+
+    USERNAME_FIELD_ = 'email'
+    REQUIRED_FIELDS = []
 
 class Topic(models.Model):
     name = models.CharField(max_length=200)
@@ -35,4 +45,4 @@ class Message(models.Model):
         ordering = ['-updated', '-created']
 
     def __str__(self):
-        return self.body[0:50] # hasta la letra 50
+        return self.body[0:50] # hasta la letra 50 """ """
